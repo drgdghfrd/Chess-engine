@@ -1,0 +1,25 @@
+# Build
+build/
+build-*/
+android-build-*/
+*.o
+*.so
+!android-oex/app/src/main/jniLibs/**/*.so
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.gradle/
+local.properties
+
+# Android
+android-oex/app/build/
+android-oex/.gradle/
+android-oex/local.properties
+*.apk
+*.aab
+
+# OS
+.DS_Store
+Thumbs.db
