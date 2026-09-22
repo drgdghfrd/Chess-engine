@@ -170,9 +170,15 @@ def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book
             return GameResult('abort',ply,moves,f'{e.label}: {ex}')
         if not mv or mv in ('0000','(none)'):
             result='0-1' if idx==0 else '1-0'; reason='no legal move'; return GameResult(result,ply,moves,reason)
+        prior_status, prior_legal, prior_fen = validator.status(moves)
+        if not prior_fen:
+            return GameResult('abort',ply,moves,'validator returned no FEN before move')
         moves.append(mv)
-        if on_ply: on_ply(ply+1, idx, mv, moves[:])
         status,legal,fen=validator.status(moves)
+        if not fen or fen_key(fen) == fen_key(prior_fen):
+            moves.pop()
+            return GameResult('abort',ply,moves,f'illegal move rejected: {mv}')
+        if on_ply: on_ply(ply+1, idx, mv, moves[:])
         k=fen_key(fen); seen[k]=seen.get(k,0)+1
         if status=='checkmate':
             result='0-1' if idx==0 else '1-0'; reason='checkmate'; break
