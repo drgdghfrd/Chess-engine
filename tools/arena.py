@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse, json, math, os, queue, subprocess, sys, threading, time
 from dataclasses import dataclass
 from pathlib import Path
+from datetime import datetime, timezone
+import json
 
 STARTPOS = "startpos"
 UNICODE = {
@@ -162,11 +164,82 @@ def result_for_engine(game_result, engine_was_white):
     white_won = game_result.result == '1-0'
     return 'win' if (white_won == engine_was_white) else 'loss'
 
+def write_jsonl(path, record):
+    if not path:
+        return
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as fh:
+        json.dump(record, fh, ensure_ascii=False, sort_keys=True)
+        fh.write("\\n")
+
+
+def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, reason, args):
+    if fh is None:
+        return
+    try:
+        import chess
+    except ImportError:
+        raise UCIError("--pgn-out requires python-chess")
+    board = chess.Board()
+    san = []
+    for uci in moves:
+        mv = chess.Move.from_uci(uci)
+        if mv not in board.legal_moves:
+            raise UCIError(f"illegal recorded move while writing PGN: {uci}")
+        san.append(board.san(mv))
+        board.push(mv)
+    headers = {
+        "Event": "UltraChess Arena",
+        "Site": "local",
+        "Date": datetime.now(timezone.utc).strftime("%Y.%m.%d"),
+        "Round": str(game_index),
+        "White": a_label if a_white else b_label,
+        "Black": b_label if a_white else a_label,
+        "Result": result,
+        "Annotator": "tools/arena.py",
+        "TimeControl": f"depth {args.depth}" if not args.movetime else f"{args.movetime} ms/move",
+        "Termination": reason,
+    }
+    for k, v in headers.items():
+        fh.write(f'[{k} "{str(v).replace(chr(34), chr(39))}"]\\n')
+    fh.write("\\n")
+    for i in range(0, len(san), 2):
+        fh.write(f"{i//2+1}. {san[i]}")
+        if i + 1 < len(san):
+            fh.write(f" {san[i+1]}")
+        fh.write(" ")
+    fh.write(f"{result}\\n\\n")
+
+
 def run_match(args, progress=print):
-    a=UCIEngine(args.engine_a,'A:'+Path(args.engine_a).name); b=UCIEngine(args.engine_b,'B:'+Path(args.engine_b).name)
+    a=UCIEngine(args.engine_a,'A:'+Path(args.engine_a).name)
+    b=UCIEngine(args.engine_b,'B:'+Path(args.engine_b).name)
     v=Validator(args.validator or args.engine_a)
     for x in (a,b,v): x.start()
-    wa=wb=dr=0; allres=[]
+    wa=wb=dr=aborts=0
+    allres=[]
+    pgn_fh=None
+    if args.pgn_out:
+        Path(args.pgn_out).parent.mkdir(parents=True, exist_ok=True)
+        pgn_fh=open(args.pgn_out,"w",encoding="utf-8")
+    if args.jsonl_out:
+        Path(args.jsonl_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.jsonl_out).write_text("",encoding="utf-8")
+        write_jsonl(args.jsonl_out,{
+            "type":"match",
+            "timestamp_utc":datetime.now(timezone.utc).isoformat(),
+            "engine_a":str(Path(args.engine_a).resolve()),
+            "engine_b":str(Path(args.engine_b).resolve()),
+            "validator":str(Path(args.validator or args.engine_a).resolve()),
+            "games_requested":args.games,
+            "depth":args.depth,
+            "movetime_ms":args.movetime or None,
+            "maxplies":args.maxplies,
+            "threads":args.threads,
+            "alternate":bool(args.alternate),
+            "book_a":bool(args.book_a),
+            "book_b":bool(args.book_b),
+        })
     try:
         for i in range(args.games):
             if args.alternate and i%2:
@@ -177,19 +250,40 @@ def run_match(args, progress=print):
                 eba, ebb = args.book_a, args.book_b
             r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads)
             allres.append(r)
-            a_white = (ea is a)
-            a_result = result_for_engine(r, a_white)
-            if a_result == 'win': wa += 1
-            elif a_result == 'loss': wb += 1
-            else: dr += 1
+            a_white=(ea is a)
+            a_result=result_for_engine(r,a_white)
+            if a_result=='win': wa+=1
+            elif a_result=='loss': wb+=1
+            elif a_result=='draw': dr+=1
+            else: aborts+=1
+            rec={
+                "type":"game","game":i+1,
+                "white":Path(ea.path).name,"black":Path(eb.path).name,
+                "engine_a_white":a_white,
+                "result":r.result,"engine_a_result":a_result,
+                "plies":r.plies,"reason":r.reason,"moves_uci":r.moves,
+            }
+            write_jsonl(args.jsonl_out,rec)
+            if pgn_fh:
+                write_pgn_record(pgn_fh,i+1,Path(args.engine_a).name,Path(args.engine_b).name,
+                                 a_white,r.result,r.moves,r.reason,args)
             progress(f"Game {i+1}/{args.games}: {r.result} ({r.reason}, {r.plies} plies); A={a_result}")
             progress("  "+" ".join(r.moves))
     finally:
         for x in (a,b,v): x.close()
-    games=wa+wb+dr; score=wa+0.5*dr; d=elo_diff(score,games)
-    progress(f"A W/D/L: {wa}/{dr}/{wb}")
-    progress("Performance Elo A-B: " + (f"{d:.1f}" if d is not None else "undefined (extreme score)"))
+        if pgn_fh: pgn_fh.close()
+    games=wa+wb+dr
+    score=wa+0.5*dr
+    d=elo_diff(score,games)
+    progress(f"A W/D/L: {wa}/{dr}/{wb}; aborted: {aborts}")
+    progress("Performance Elo A-B: "+(f"{d:.1f}" if d is not None else "undefined (extreme score)"))
+    write_jsonl(args.jsonl_out,{
+        "type":"summary","games_completed":games,"aborted":aborts,
+        "wins":wa,"draws":dr,"losses":wb,
+        "score":score/games if games else None,"elo_delta":d,
+    })
     return allres
+
 
 def gui(args):
     import tkinter as tk
@@ -242,7 +336,7 @@ def gui(args):
     root.mainloop()
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true')
+    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true'); ap.add_argument('--jsonl-out'); ap.add_argument('--pgn-out')
     a=ap.parse_args()
     if a.gui: return gui(a)
     if not a.engine_a or not a.engine_b: ap.error('--engine-a and --engine-b are required unless --gui')
