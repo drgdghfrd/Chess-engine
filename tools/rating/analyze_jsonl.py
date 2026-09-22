@@ -7,11 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-TOOLS_ROOT = Path(__file__).resolve().parents[1]
-if str(TOOLS_ROOT) not in sys.path:
-    sys.path.insert(0, str(TOOLS_ROOT))
-
-from rating.rating import summarize
+RATING_FILE = Path(__file__).resolve().with_name("rating.py")
+spec = __import__("importlib.util").util.spec_from_file_location("ultrachess_rating", RATING_FILE)
+if spec is None or spec.loader is None:
+    raise SystemExit("cannot load rating helper")
+rating_mod = __import__("importlib.util").util.module_from_spec(spec)
+spec.loader.exec_module(rating_mod)
+summarize = rating_mod.summarize
 
 
 def load(path: str):
