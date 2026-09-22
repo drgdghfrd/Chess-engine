@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from arena import GameResult, parse_uci_identity, result_for_engine
+from arena import GameResult, elo_diff, parse_uci_identity, result_for_engine
 from rating.rating import elo_from_score, summarize
 
 
@@ -25,6 +25,9 @@ class RatingTests(unittest.TestCase):
 
     def test_elo_monotonic(self):
         self.assertLess(elo_from_score(0.4), elo_from_score(0.6))
+
+    def test_arena_elo_formula_uses_score_fraction(self):
+        self.assertAlmostEqual(elo_diff(10.5, 24), -43.6578, places=3)
 
 
 class ArenaAttributionTests(unittest.TestCase):
