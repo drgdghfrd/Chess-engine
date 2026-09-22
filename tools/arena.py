@@ -203,8 +203,12 @@ def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book
     return GameResult(result,len(moves),moves,reason)
 
 def elo_diff(score, games):
-    if games<=0 or score<=0 or score>=games: return None
-    return -400*math.log10(1/score-1/games)
+    if games <= 0:
+        return None
+    p = score / games
+    if p <= 0.0 or p >= 1.0:
+        return None
+    return -400 * math.log10(1.0 / p - 1.0)
 
 def result_for_engine(game_result, engine_was_white):
     if game_result.result == 'abort': return 'abort'
