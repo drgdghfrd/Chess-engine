@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from arena import GameResult, result_for_engine
+from arena import GameResult, parse_uci_identity, result_for_engine
 from rating.rating import elo_from_score, summarize
 
 
@@ -28,6 +28,16 @@ class RatingTests(unittest.TestCase):
 
 
 class ArenaAttributionTests(unittest.TestCase):
+    def test_uci_identity(self):
+        name, author = parse_uci_identity([
+            "id name TestEngine 1.2",
+            "id author Example",
+            "option name Threads type spin default 1 min 1 max 8",
+            "uciok",
+        ])
+        self.assertEqual(name, "TestEngine 1.2")
+        self.assertEqual(author, "Example")
+
     def test_alternating_colors(self):
         white_win = GameResult("1-0", 1, ["e2e4"], "checkmate")
         black_win = GameResult("0-1", 1, ["e7e5"], "checkmate")
