@@ -1,0 +1,31 @@
+name: Engine regression
+
+on:
+  push:
+    branches: [ main, master, "benchmark/**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run benchmark unit tests
+        run: python -m unittest discover -s tools/tests -p "test_*.py" -v
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build perft regression
+        run: cmake --build build --target ultrachess-perft --parallel
+
+      - name: Run perft regression
+        run: ./build/ultrachess-perft
