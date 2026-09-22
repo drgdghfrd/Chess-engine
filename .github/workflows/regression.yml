@@ -36,6 +36,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python benchmark dependency
+        run: python -m pip install --upgrade pip python-chess
+
       - name: Install reference engine
         run: |
           sudo apt-get update
