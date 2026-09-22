@@ -87,6 +87,27 @@ add_executable(ultrachess-perft
     ${UC_SRC}
 )
 
+add_executable(ultrachess-position-regression
+    tests/position_regression.cpp
+    ${UC_SRC}
+)
+
+target_include_directories(ultrachess-position-regression PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_compile_options(ultrachess-position-regression PRIVATE
+    -O3
+    -DNDEBUG
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+
+if(UNIX)
+    target_link_libraries(ultrachess-position-regression PRIVATE pthread)
+endif()
+
 target_include_directories(ultrachess-perft PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
