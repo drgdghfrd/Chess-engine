@@ -11,7 +11,7 @@ Game adjudication uses an UltraChess validator (perft/status via UCI), plus
 threefold repetition, 50-move rule, insufficient material, and a max-ply cap.
 """
 from __future__ import annotations
-import argparse, json, math, os, queue, subprocess, sys, threading, time
+import argparse, hashlib, json, math, os, queue, subprocess, sys, threading, time
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
@@ -40,6 +40,7 @@ class UCIEngine:
         self.path=str(path); self.label=label or Path(self.path).name
         self.p=None; self.lock=threading.Lock(); self.alive=False
         self.uci_name=""; self.uci_author=""
+        self.sha256=""
     def start(self):
         self.p=subprocess.Popen([self.path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -47,6 +48,14 @@ class UCIEngine:
         self._cmd("uci")
         uci_lines=self._wait_for("uciok", 10)
         self.uci_name,self.uci_author=parse_uci_identity(uci_lines)
+        try:
+            h=hashlib.sha256()
+            with open(self.path,"rb") as fh:
+                for chunk in iter(lambda: fh.read(1024*1024), b""):
+                    h.update(chunk)
+            self.sha256=h.hexdigest()
+        except OSError:
+            self.sha256=""
         self._cmd("isready")
         self._wait_for("readyok", 10)
     def _cmd(self, s):
@@ -285,8 +294,11 @@ def run_match(args, progress=print):
             "engine_b":str(Path(args.engine_b).resolve()),
             "engine_a_uci_name":a.uci_name,
             "engine_a_uci_author":a.uci_author,
+            "engine_a_sha256":a.sha256,
             "engine_b_uci_name":b.uci_name,
             "engine_b_uci_author":b.uci_author,
+            "engine_b_sha256":b.sha256,
+            "validator_sha256":v.eng.sha256,
             "validator":str(Path(args.validator or args.engine_a).resolve()),
             "games_requested":args.games,
             "depth":args.depth,
