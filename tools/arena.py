@@ -154,7 +154,7 @@ def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book
     engines=[a,b]; books=[book_a,book_b]; moves=list(opening_moves or []); seen={};
     result='1/2-1/2'; reason='max plies'
     status,_,fen=validator.status(moves); seen[fen_key(fen)]=1
-    for ply in range(maxplies):
+    for ply in range(max(0, maxplies - len(moves))):
         if stop_event and stop_event.is_set(): return GameResult('abort',ply,moves,'stopped')
         idx=len(moves)%2; e=engines[idx]
         try:
@@ -218,6 +218,7 @@ def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, r
             raise UCIError(f"illegal recorded move while writing PGN: {uci}")
         san.append(board.san(mv))
         board.push(mv)
+    pgn_result = result if result in ("1-0", "0-1", "1/2-1/2") else "*"
     headers = {
         "Event": "UltraChess Arena",
         "Site": "local",
@@ -225,7 +226,7 @@ def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, r
         "Round": str(game_index),
         "White": a_label if a_white else b_label,
         "Black": b_label if a_white else a_label,
-        "Result": result,
+        "Result": pgn_result,
         "Annotator": "tools/arena.py",
         "TimeControl": f"depth {args.depth}" if not args.movetime else f"{args.movetime} ms/move",
         "Termination": reason,
@@ -238,7 +239,7 @@ def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, r
         if i + 1 < len(san):
             fh.write(f" {san[i+1]}")
         fh.write(" ")
-    fh.write(f"{result}\n\n")
+    fh.write(f"{pgn_result}\n\n")
 
 
 def run_match(args, progress=print):
