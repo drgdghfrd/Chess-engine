@@ -74,9 +74,12 @@ class UCIEngine:
     def option(self, name, value):
         self._cmd(f"setoption name {name} value {value}")
         self._cmd("isready"); self._wait_for("readyok", 10)
-    def bestmove(self, moves, depth=None, movetime=None, threads=None):
+    def bestmove(self, moves, depth=None, movetime=None, threads=None, hash_mb=None):
         if threads is not None:
             try: self.option("Threads", threads)
+            except UCIError: pass
+        if hash_mb is not None:
+            try: self.option("Hash", hash_mb)
             except UCIError: pass
         self._cmd("position startpos" + ((" moves " + " ".join(moves)) if moves else ""))
         if movetime is not None: self._cmd(f"go movetime {max(1,int(movetime))}")
@@ -159,7 +162,7 @@ def validate_opening(validator, opening):
 
 
 def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book_b=False,
-              threads=1,stop_event=None, on_ply=None, opening_moves=None):
+              threads=1,hash_mb=64,stop_event=None, on_ply=None, opening_moves=None):
     engines=[a,b]; books=[book_a,book_b]; moves=list(opening_moves or []); seen={};
     result='1/2-1/2'; reason='max plies'
     status,_,fen=validator.status(moves); seen[fen_key(fen)]=1
@@ -174,7 +177,7 @@ def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book
             else:
                 try: e.option('UseBook','false')
                 except UCIError: pass
-            mv=e.bestmove(moves,depth=depth,movetime=movetime,threads=threads)
+            mv=e.bestmove(moves,depth=depth,movetime=movetime,threads=threads,hash_mb=hash_mb)
         except Exception as ex:
             return GameResult('abort',ply,moves,f'{e.label}: {ex}')
         if not mv or mv in ('0000','(none)'):
@@ -305,6 +308,7 @@ def run_match(args, progress=print):
             "movetime_ms":args.movetime or None,
             "maxplies":args.maxplies,
             "threads":args.threads,
+            "hash_mb":args.hash_mb,
             "alternate":bool(args.alternate),
             "openings":str(Path(args.openings).resolve()) if args.openings else None,
             "book_a":bool(args.book_a),
@@ -320,7 +324,7 @@ def run_match(args, progress=print):
                 ea, eb = a, b
                 eba, ebb = args.book_a, args.book_b
             validate_opening(v, opening)
-            r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads,
+            r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads,args.hash_mb,
                         opening_moves=opening)
             allres.append(r)
             a_white=(len(opening) % 2 == 0)
@@ -409,7 +413,7 @@ def gui(args):
     root.mainloop()
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true'); ap.add_argument('--openings'); ap.add_argument('--jsonl-out'); ap.add_argument('--pgn-out')
+    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--hash-mb',type=int,default=64); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true'); ap.add_argument('--openings'); ap.add_argument('--jsonl-out'); ap.add_argument('--pgn-out')
     a=ap.parse_args()
     if a.gui: return gui(a)
     if not a.engine_a or not a.engine_b: ap.error('--engine-a and --engine-b are required unless --gui')
