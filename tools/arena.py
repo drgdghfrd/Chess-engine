@@ -11,7 +11,7 @@ Game adjudication uses an UltraChess validator (perft/status via UCI), plus
 threefold repetition, 50-move rule, insufficient material, and a max-ply cap.
 """
 from __future__ import annotations
-import argparse, math, os, queue, subprocess, sys, threading, time
+import argparse, json, math, os, queue, subprocess, sys, threading, time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -157,6 +157,11 @@ def elo_diff(score, games):
     if games<=0 or score<=0 or score>=games: return None
     return -400*math.log10(1/score-1/games)
 
+def result_for_engine(game_result, engine_was_white):
+    if game_result.result == '1/2-1/2': return 'draw'
+    white_won = game_result.result == '1-0'
+    return 'win' if (white_won == engine_was_white) else 'loss'
+
 def run_match(args, progress=print):
     a=UCIEngine(args.engine_a,'A:'+Path(args.engine_a).name); b=UCIEngine(args.engine_b,'B:'+Path(args.engine_b).name)
     v=Validator(args.validator or args.engine_a)
@@ -171,16 +176,18 @@ def run_match(args, progress=print):
                 ea, eb = a, b
                 eba, ebb = args.book_a, args.book_b
             r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads)
-            allres.append(r); 
-            if r.result=='1-0': wa+=1
-            elif r.result=='0-1': wb+=1
-            elif r.result=='1/2-1/2': dr+=1
-            progress(f"Game {i+1}/{args.games}: {r.result} ({r.reason}, {r.plies} plies)")
+            allres.append(r)
+            a_white = (ea is a)
+            a_result = result_for_engine(r, a_white)
+            if a_result == 'win': wa += 1
+            elif a_result == 'loss': wb += 1
+            else: dr += 1
+            progress(f"Game {i+1}/{args.games}: {r.result} ({r.reason}, {r.plies} plies); A={a_result}")
             progress("  "+" ".join(r.moves))
     finally:
         for x in (a,b,v): x.close()
     games=wa+wb+dr; score=wa+0.5*dr; d=elo_diff(score,games)
-    progress(f"W/D/L: {wa}/{dr}/{wb}")
+    progress(f"A W/D/L: {wa}/{dr}/{wb}")
     progress("Performance Elo A-B: " + (f"{d:.1f}" if d is not None else "undefined (extreme score)"))
     return allres
 
