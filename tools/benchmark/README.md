@@ -30,3 +30,20 @@ The tools/rating helper reports an approximate 95% interval using a Wilson inter
 ## Reproducibility checklist
 
 Keep the exact engine commit/hash, compiler/toolchain, engine options, benchmark time control, number of games, color schedule, opening source/version, validator version, and generated JSONL/PGN together with the published result.
+
+
+## Fixed opening suite
+
+The repository includes `tools/benchmark/openings_12x4.txt`, a deterministic 12-line suite with four opening plies per line. The Arena cycles through the file when more games are requested. Because each line contains an even number of plies, the side to move remains White at game start and the `--alternate` flag cleanly swaps which engine receives White.
+
+Example:
+
+    python3 tools/arena.py \
+      --engine-a ./ultrachess \
+      --engine-b ./reference-engine \
+      --games 120 \
+      --depth 8 \
+      --alternate \
+      --openings tools/benchmark/openings_12x4.txt \
+      --jsonl-out results/match.jsonl \
+      --pgn-out results/match.pgn
