@@ -120,13 +120,14 @@ def insufficient(fen):
         return bishops[0]==bishops[1]
     return False
 
-def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book_b=False,threads=1,stop_event=None, on_ply=None):
-    engines=[a,b]; books=[book_a,book_b]; moves=[]; seen={};
+def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book_b=False,
+              threads=1,stop_event=None, on_ply=None, opening_moves=None):
+    engines=[a,b]; books=[book_a,book_b]; moves=list(opening_moves or []); seen={};
     result='1/2-1/2'; reason='max plies'
     status,_,fen=validator.status(moves); seen[fen_key(fen)]=1
     for ply in range(maxplies):
         if stop_event and stop_event.is_set(): return GameResult('abort',ply,moves,'stopped')
-        idx=ply%2; e=engines[idx]
+        idx=len(moves)%2; e=engines[idx]
         try:
             if books[idx]:
                 # Engines that support UseBook get the setting; unsupported engines just search.
@@ -218,6 +219,22 @@ def run_match(args, progress=print):
     for x in (a,b,v): x.start()
     wa=wb=dr=aborts=0
     allres=[]
+    openings=[]
+    if args.openings:
+        for raw in Path(args.openings).read_text(encoding="utf-8").splitlines():
+            line=raw.split("#",1)[0].strip()
+            if not line:
+                continue
+            if line.startswith("startpos"):
+                line=line[len("startpos"):].strip()
+                if line.startswith("moves"):
+                    line=line[5:].strip()
+            toks=line.split()
+            if any(len(x) < 4 for x in toks):
+                raise UCIError(f"invalid opening line: {raw}")
+            openings.append(toks)
+    if not openings:
+        openings=[[]]
     pgn_fh=None
     if args.pgn_out:
         Path(args.pgn_out).parent.mkdir(parents=True, exist_ok=True)
@@ -237,20 +254,23 @@ def run_match(args, progress=print):
             "maxplies":args.maxplies,
             "threads":args.threads,
             "alternate":bool(args.alternate),
+            "openings":str(Path(args.openings).resolve()) if args.openings else None,
             "book_a":bool(args.book_a),
             "book_b":bool(args.book_b),
         })
     try:
         for i in range(args.games):
+            opening = openings[i % len(openings)]
             if args.alternate and i%2:
                 ea, eb = b, a
                 eba, ebb = args.book_b, args.book_a
             else:
                 ea, eb = a, b
                 eba, ebb = args.book_a, args.book_b
-            r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads)
+            r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads,
+                        opening_moves=opening)
             allres.append(r)
-            a_white=(ea is a)
+            a_white=(len(opening) % 2 == 0)
             a_result=result_for_engine(r,a_white)
             if a_result=='win': wa+=1
             elif a_result=='loss': wb+=1
@@ -261,7 +281,7 @@ def run_match(args, progress=print):
                 "white":Path(ea.path).name,"black":Path(eb.path).name,
                 "engine_a_white":a_white,
                 "result":r.result,"engine_a_result":a_result,
-                "plies":r.plies,"reason":r.reason,"moves_uci":r.moves,
+                "plies":r.plies,"reason":r.reason,"opening_uci":opening,"moves_uci":r.moves,
             }
             write_jsonl(args.jsonl_out,rec)
             if pgn_fh:
@@ -336,7 +356,7 @@ def gui(args):
     root.mainloop()
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true'); ap.add_argument('--jsonl-out'); ap.add_argument('--pgn-out')
+    ap=argparse.ArgumentParser(); ap.add_argument('--gui',action='store_true'); ap.add_argument('--engine-a'); ap.add_argument('--engine-b'); ap.add_argument('--validator'); ap.add_argument('--games',type=int,default=2); ap.add_argument('--depth',type=int,default=4); ap.add_argument('--movetime',type=int,default=0); ap.add_argument('--maxplies',type=int,default=300); ap.add_argument('--threads',type=int,default=1); ap.add_argument('--book-a',action='store_true'); ap.add_argument('--book-b',action='store_true'); ap.add_argument('--alternate',action='store_true'); ap.add_argument('--openings'); ap.add_argument('--jsonl-out'); ap.add_argument('--pgn-out')
     a=ap.parse_args()
     if a.gui: return gui(a)
     if not a.engine_a or not a.engine_b: ap.error('--engine-a and --engine-b are required unless --gui')
