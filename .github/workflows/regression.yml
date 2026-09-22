@@ -25,10 +25,13 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build perft regression
-        run: cmake --build build --target ultrachess-perft --parallel
+        run: cmake --build build --target ultrachess-perft ultrachess-position-regression --parallel
 
       - name: Run perft regression
         run: ./build/ultrachess-perft
+
+      - name: Run position legality regression
+        run: ./build/ultrachess-position-regression
 
   reference-smoke:
     runs-on: ubuntu-latest
