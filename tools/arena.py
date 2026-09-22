@@ -15,7 +15,6 @@ import argparse, json, math, os, queue, subprocess, sys, threading, time
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
-import json
 
 STARTPOS = "startpos"
 UNICODE = {
@@ -160,6 +159,7 @@ def elo_diff(score, games):
     return -400*math.log10(1/score-1/games)
 
 def result_for_engine(game_result, engine_was_white):
+    if game_result.result == 'abort': return 'abort'
     if game_result.result == '1/2-1/2': return 'draw'
     white_won = game_result.result == '1-0'
     return 'win' if (white_won == engine_was_white) else 'loss'
@@ -170,7 +170,7 @@ def write_jsonl(path, record):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as fh:
         json.dump(record, fh, ensure_ascii=False, sort_keys=True)
-        fh.write("\\n")
+        fh.write("\n")
 
 
 def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, reason, args):
@@ -201,14 +201,14 @@ def write_pgn_record(fh, game_index, a_label, b_label, a_white, result, moves, r
         "Termination": reason,
     }
     for k, v in headers.items():
-        fh.write(f'[{k} "{str(v).replace(chr(34), chr(39))}"]\\n')
+        fh.write(f'[{k} "{str(v).replace(chr(34), chr(39))}"]\n')
     fh.write("\\n")
     for i in range(0, len(san), 2):
         fh.write(f"{i//2+1}. {san[i]}")
         if i + 1 < len(san):
             fh.write(f" {san[i+1]}")
         fh.write(" ")
-    fh.write(f"{result}\\n\\n")
+    fh.write(f"{result}\n\n")
 
 
 def run_match(args, progress=print):
