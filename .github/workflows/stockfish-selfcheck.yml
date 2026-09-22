@@ -1,0 +1,45 @@
+name: Stockfish self-play benchmark control
+
+on:
+  push:
+    branches:
+      - experiment/stockfish-selfcheck
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          python -m pip install --upgrade pip python-chess
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target ultrachess-perft --parallel
+          ./build/ultrachess-perft
+
+      - name: Run 12-game Stockfish control
+        run: |
+          mkdir -p results
+          SF="$(command -v stockfish)"
+          python3 tools/arena.py             --engine-a "$SF"             --engine-b "$SF"             --validator "$SF"             --games 12             --depth 5             --threads 1             --hash-mb 64             --alternate             --openings tools/benchmark/openings_12x4.txt             --jsonl-out results/stockfish-selfcheck.jsonl             --pgn-out results/stockfish-selfcheck.pgn
+          python3 tools/rating/analyze_jsonl.py             results/stockfish-selfcheck.jsonl             --require-games 12             --require-alternating
+
+      - name: Upload control data
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockfish-selfcheck
+          path: results/
+          retention-days: 30
