@@ -1,0 +1,57 @@
+name: Reference engine smoke benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "Games"
+        required: false
+        default: "4"
+      depth:
+        description: "Search depth"
+        required: false
+        default: "4"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install reference engine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build engine
+        run: cmake --build build --target ultrachess --parallel
+
+      - name: Run small reference match
+        run: |
+          mkdir -p results
+          python3 tools/arena.py \
+            --engine-a ./build/ultrachess \
+            --engine-b "$(command -v stockfish)" \
+            --validator ./build/ultrachess \
+            --games "${{ inputs.games }}" \
+            --depth "${{ inputs.depth }}" \
+            --alternate \
+            --openings tools/benchmark/openings_12x4.txt \
+            --jsonl-out results/reference-smoke.jsonl \
+            --pgn-out results/reference-smoke.pgn
+
+      - name: Upload match data
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-engine-smoke
+          path: results/
+          retention-days: 14
