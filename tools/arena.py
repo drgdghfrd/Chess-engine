@@ -331,7 +331,7 @@ def run_match(args, progress=print):
             r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads,args.hash_mb,
                         opening_moves=opening)
             allres.append(r)
-            a_white=(len(opening) % 2 == 0)
+            a_white=(ea is a)
             a_result=result_for_engine(r,a_white)
             if a_result=='win': wa+=1
             elif a_result=='loss': wb+=1
