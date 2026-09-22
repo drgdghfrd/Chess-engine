@@ -133,6 +133,22 @@ def insufficient(fen):
         return bishops[0]==bishops[1]
     return False
 
+def validate_opening(validator, opening):
+    for i in range(1, len(opening) + 1):
+        status, legal, fen = validator.status(opening[:i])
+        if not fen:
+            raise UCIError(f"opening validation failed at ply {i}: no FEN returned")
+        expected_side = "w" if i % 2 == 0 else "b"
+        actual_side = fen.split()[1]
+        if actual_side != expected_side:
+            raise UCIError(
+                f"illegal opening move at ply {i}: {opening[i-1]} "
+                f"(expected side {expected_side}, got {actual_side})"
+            )
+        if legal <= 0 and i < len(opening):
+            raise UCIError(f"opening reaches terminal position before line ends at ply {i}")
+
+
 def play_game(a,b,validator,depth=4,movetime=None,maxplies=300,book_a=False,book_b=False,
               threads=1,stop_event=None, on_ply=None, opening_moves=None):
     engines=[a,b]; books=[book_a,book_b]; moves=list(opening_moves or []); seen={};
@@ -284,6 +300,7 @@ def run_match(args, progress=print):
             else:
                 ea, eb = a, b
                 eba, ebb = args.book_a, args.book_b
+            validate_opening(v, opening)
             r=play_game(ea,eb,v,args.depth,args.movetime,args.maxplies,eba,ebb,args.threads,
                         opening_moves=opening)
             allres.append(r)
