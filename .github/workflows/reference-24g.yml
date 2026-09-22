@@ -1,0 +1,49 @@
+name: Reference 24-game benchmark
+
+on:
+  push:
+    branches:
+      - experiment/reference-24g-v2
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          python -m pip install --upgrade pip python-chess
+
+      - name: Show reference engine version
+        run: stockfish bench 1 1 1 default depth >/tmp/stockfish-bench.txt 2>&1 || true
+
+      - name: Configure and build UltraChess
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target ultrachess ultrachess-perft --parallel
+          ./build/ultrachess-perft
+
+      - name: Run 24-game reference benchmark
+        run: |
+          mkdir -p results
+          python3 tools/arena.py             --engine-a ./build/ultrachess             --engine-b "$(command -v stockfish)"             --validator ./build/ultrachess             --games 24             --depth 5             --threads 1             --hash-mb 64             --alternate             --openings tools/benchmark/openings_12x4.txt             --jsonl-out results/reference-24g.jsonl             --pgn-out results/reference-24g.pgn
+          PYTHONPATH=tools python3 tools/rating/analyze_jsonl.py             results/reference-24g.jsonl             --require-games 24             --require-alternating
+
+      - name: Upload reproducible benchmark data
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultrachess-reference-24g
+          path: |
+            results/reference-24g.jsonl
+            results/reference-24g.pgn
+          retention-days: 30
