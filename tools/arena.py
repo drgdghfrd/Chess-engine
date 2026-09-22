@@ -24,16 +24,29 @@ UNICODE = {
 
 class UCIError(RuntimeError): pass
 
+def parse_uci_identity(lines):
+    name = ""
+    author = ""
+    for line in lines:
+        if line.startswith("id name "):
+            name = line[8:].strip()
+        elif line.startswith("id author "):
+            author = line[10:].strip()
+    return name, author
+
+
 class UCIEngine:
     def __init__(self, path, label=None):
         self.path=str(path); self.label=label or Path(self.path).name
         self.p=None; self.lock=threading.Lock(); self.alive=False
+        self.uci_name=""; self.uci_author=""
     def start(self):
         self.p=subprocess.Popen([self.path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, bufsize=1)
         self.alive=True
         self._cmd("uci")
-        self._wait_for("uciok", 10)
+        uci_lines=self._wait_for("uciok", 10)
+        self.uci_name,self.uci_author=parse_uci_identity(uci_lines)
         self._cmd("isready")
         self._wait_for("readyok", 10)
     def _cmd(self, s):
@@ -247,6 +260,10 @@ def run_match(args, progress=print):
             "timestamp_utc":datetime.now(timezone.utc).isoformat(),
             "engine_a":str(Path(args.engine_a).resolve()),
             "engine_b":str(Path(args.engine_b).resolve()),
+            "engine_a_uci_name":a.uci_name,
+            "engine_a_uci_author":a.uci_author,
+            "engine_b_uci_name":b.uci_name,
+            "engine_b_uci_author":b.uci_author,
             "validator":str(Path(args.validator or args.engine_a).resolve()),
             "games_requested":args.games,
             "depth":args.depth,
