@@ -1,6 +1,7 @@
 name: Reference engine smoke benchmark
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       games:
@@ -42,8 +43,8 @@ jobs:
             --engine-a ./build/ultrachess \
             --engine-b "$(command -v stockfish)" \
             --validator ./build/ultrachess \
-            --games "${{ inputs.games }}" \
-            --depth "${{ inputs.depth }}" \
+            --games "${{ inputs.games || '2' }}" \
+            --depth "${{ inputs.depth || '3' }}" \
             --alternate \
             --openings tools/benchmark/openings_12x4.txt \
             --jsonl-out results/reference-smoke.jsonl \
