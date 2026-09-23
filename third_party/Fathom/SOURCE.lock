@@ -1,0 +1,12 @@
+# ChessZero Fathom source lock
+# Upstream: https://github.com/jdart1/Fathom
+# Pinned commit: c6cf6e8f2f4275e91e03c3612b8d17fe64253c5e
+# Commit is part of the reproducible build contract. The source tree must
+# contain these files when CHESSZERO_FATHOM_OFFLINE=ON.
+
+src/tbprobe.c d94c52620d1ff0d13c0973f518ce5ee59b0902c0 70630
+src/tbprobe.h 406d566f3e43aec0e68293b54c6e56b6fb803c92 12814
+src/tbconfig.h 5836386e43b8464e14be73dcf60ce2d8134a6ea0 5648
+src/tbchess.c bca4d1a58de446ed84dbfff18bf7457be097736b 31292
+src/stdendian.h cd0e317753d1173b44a1277d9dcd4678c517ca9c 8835
+LICENSE 3aa73758fabef0b744b59b407dc40d77ec7022c7 1125
