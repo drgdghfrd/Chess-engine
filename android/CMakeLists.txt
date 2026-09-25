@@ -41,7 +41,7 @@ if(CHESSZERO_ENABLE_SYZYGY)
         )
     endif()
     add_compile_definitions(CHESSZERO_FATHOM=1)
-    include_directories(SYSTEM "\( {CHESSZERO_FATHOM_INCLUDE_DIR}")
+    include_directories(SYSTEM "${CHESSZERO_FATHOM_INCLUDE_DIR}")
     set_source_files_properties( \){CHESSZERO_FATHOM_SRC} PROPERTIES LANGUAGE C)
 endif()
 # Embed the release HalfKP network into every Android native engine target.
