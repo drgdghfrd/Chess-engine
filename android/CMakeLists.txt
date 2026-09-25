@@ -44,6 +44,8 @@ if(CHESSZERO_ENABLE_SYZYGY)
     endif()
     add_compile_definitions(CHESSZERO_FATHOM=1)
     include_directories(SYSTEM "${CHESSZERO_FATHOM_INCLUDE_DIR}")
+    # Fathom sources must be compiled as C (not C++).
+    set_source_files_properties(${CHESSZERO_FATHOM_SRC} PROPERTIES LANGUAGE C)
 endif()
 # Embed the release HalfKP network into every Android native engine target.
 # OEX processes launched by Chess GUIs cannot reliably resolve app-private
