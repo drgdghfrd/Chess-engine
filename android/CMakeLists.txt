@@ -22,7 +22,6 @@ if(CHESSZERO_ENABLE_SYZYGY)
         set(CHESSZERO_FATHOM_INCLUDE_DIR "${CHESSZERO_FATHOM_SOURCE_DIR}/src")
         set(CHESSZERO_FATHOM_SRC
             "${CHESSZERO_FATHOM_SOURCE_DIR}/src/tbprobe.c"
-            "${CHESSZERO_FATHOM_SOURCE_DIR}/src/tbchess.c"
         )
     else()
         if(CHESSZERO_FATHOM_OFFLINE OR CHESSZERO_REQUIRE_VENDORED_FATHOM)
@@ -39,7 +38,6 @@ if(CHESSZERO_ENABLE_SYZYGY)
         set(CHESSZERO_FATHOM_INCLUDE_DIR "${chesszero_fathom_SOURCE_DIR}/src")
         set(CHESSZERO_FATHOM_SRC
             "${chesszero_fathom_SOURCE_DIR}/src/tbprobe.c"
-            "${chesszero_fathom_SOURCE_DIR}/src/tbchess.c"
         )
     endif()
     add_compile_definitions(CHESSZERO_FATHOM=1)
