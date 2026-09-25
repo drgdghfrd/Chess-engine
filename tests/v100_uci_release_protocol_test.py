@@ -52,7 +52,7 @@ def read_until_line_containing(token, timeout=8.0):
 try:
     send("uci")
     out = read_until("uciok")
-    assert "id name ChessZero v1.0" in out
+    assert "id name ChessZero v1." in out
     assert "option name Threads" in out
     assert "option name Move Overhead" in out
     assert "option name Slow Mover" in out

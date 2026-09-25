@@ -14,7 +14,7 @@ static std::string readFile(const fs::path& p) {
 }
 
 int main() {
-    assert(std::string(uc::kVersion) == "1.0.9");
+    assert(std::string(uc::kVersion) == "1.1.0");
     assert(std::string(uc::kEngineName) == "ChessZero");
     assert(fs::exists("CMakeLists.txt"));
     assert(fs::exists("CHANGELOG.md"));
@@ -27,13 +27,13 @@ int main() {
     assert(fs::exists("tests/v102_match_runner_test.py"));
 
     const std::string cmake = readFile("CMakeLists.txt");
-    assert(cmake.find("project(ChessZero VERSION 1.0") != std::string::npos);
+    assert(cmake.find("project(ChessZero VERSION 1.") != std::string::npos);
     assert(cmake.find("Threads::Threads") != std::string::npos);
     assert(cmake.find("install(TARGETS chesszero") != std::string::npos);
     assert(cmake.find("v101_match_runner") != std::string::npos);
 
     const std::string changelog = readFile("CHANGELOG.md");
-    assert(changelog.find("## v1.0") != std::string::npos);
+    assert(changelog.find("## v1.") != std::string::npos);
     assert(changelog.find("does not claim a new independently measured Elo result") != std::string::npos);
 
     const std::string uci = readFile("docs/UCI.md");
@@ -43,6 +43,6 @@ int main() {
     assert(uci.find("tb probe") != std::string::npos);
 
     std::cout << "v1.0 release metadata: PASS\n"
-              << "version=1.0.9 install_surface=true platform_docs=true\n";
+              << "version=1.1.0 install_surface=true platform_docs=true\n";
     return 0;
 }
