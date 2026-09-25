@@ -1,9 +1,0 @@
-build*/
-.idea/
-.gradle/
-android/.cxx/
-android/app/build/
-*.iml
-local.properties
-android/gradle/wrapper/gradle-wrapper.jar.tmp
-android/gradle/wrapper/gradle-wrapper.jar.tmp

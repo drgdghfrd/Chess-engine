@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="chesszero_background">#1E1E28</color>
-    <color name="chesszero_board_light">#F0EBDC</color>
-    <color name="chesszero_board_dark">#7A8B99</color>
-    <color name="chesszero_accent">#4A90D9</color>
-    <color name="chesszero_text">#FFFFFF</color>
-    <color name="chesszero_text_secondary">#B0B0B8</color>
-</resources>
