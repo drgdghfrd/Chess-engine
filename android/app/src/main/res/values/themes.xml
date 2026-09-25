@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ChessZero" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorBackground">@color/chesszero_background</item>
+        <item name="android:textColor">@color/chesszero_text</item>
+        <item name="android:textColorSecondary">@color/chesszero_text_secondary</item>
+        <item name="android:statusBarColor">@color/chesszero_background</item>
+        <item name="android:navigationBarColor">@color/chesszero_background</item>
+    </style>
+</resources>

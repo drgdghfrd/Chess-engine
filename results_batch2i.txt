@@ -1,0 +1,20 @@
+ChessZero v1.0.6 — Batch 2I verification
+
+Fathom OFF focused regression: 13/13 PASS
+- v091 Syzygy integration
+- v092 Syzygy probe API
+- v106 Syzygy 3-7 piece matrix
+- v097 UCI hardening + protocol
+- v098 time management + protocol
+- v099 RC engine + protocol
+- v100 release metadata + protocol
+- v103 bitboard cache
+- v093 real-backend guard (expected PASS/SKIP without Fathom)
+
+Fathom-compatible local API build:
+- v106 Syzygy 3-7 piece matrix: PASS
+- v093 real backend API smoke: PASS
+
+Actual upstream Fathom source was not fetched in this environment because github.com
+was unreachable from the build container. The source pins Fathom commit
+c6cf6e8f2f4275e91e03c3612b8d17fe64253c5e and supports CHESSZERO_FATHOM_SOURCE_DIR.

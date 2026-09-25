@@ -1,0 +1,29 @@
+ChessZero v1.0.9 workspace
+
+Source-release root: the directory containing this manifest.
+
+Historical batch notes:
+  BATCH2H_STATUS.md ... BATCH2M_STATUS.md
+
+Core source:
+  src/
+  android/
+  cmake/
+  third_party/
+  tests/
+  tools/
+  docs/
+  nets/
+
+Fathom lock:
+  third_party/Fathom/SOURCE.lock
+  tools/vendor_fathom.sh
+  tools/verify_fathom_vendor.sh
+
+Android toolchain contract:
+  compileSdk/targetSdk 35
+  AGP 8.5.1
+  Gradle distribution 8.7
+  NDK 29.0.14206865
+  CMake 3.22.1
+  ABI arm64-v8a

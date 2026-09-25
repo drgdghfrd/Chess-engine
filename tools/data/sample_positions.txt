@@ -1,0 +1,12 @@
+# FEN<TAB>target from side-to-move perspective
+# Start position is neutral for this tiny pipeline smoke test.
+rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1	0
+rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1	0
+rnbqkbnr/pppppppp/8/8/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 1 2	0
+r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3	0
+r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 3 3	0
+8/8/8/8/8/4K3/4Q3/4k3 w - - 0 1	1
+8/8/8/8/8/4K3/4q3/4k3 b - - 0 1	-1
+8/8/8/8/8/4K3/3Q4/4k3 w - - 0 1	1
+8/8/8/8/8/4K3/3q4/4k3 b - - 0 1	-1
+8/8/8/8/8/4K3/8/4k3 w - - 0 1	0

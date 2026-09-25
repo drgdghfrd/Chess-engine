@@ -1,0 +1,14 @@
+# ChessZero Fathom vendor snapshot lock
+# Upstream provenance: https://github.com/jdart1/Fathom
+# Reference upstream commit: c6cf6e8f2f4275e91e03c3612b8d17fe64253c5e
+# The hashes below are Git blob SHA-1s for the exact vendored snapshot
+# included in this source package. The snapshot is kept self-contained
+# for offline Android builds. tools/vendor_fathom.sh can regenerate the
+# lock from the referenced upstream commit when the vendor tree is replaced.
+
+src/tbprobe.c 5eac014dc5431d6e23a55b7c5dea45a34a89fa2a 73434
+src/tbprobe.h 82850e72686b6e116e18123775716a66fb8ea060 12815
+src/tbconfig.h 5836386e43b8464e14be73dcf60ce2d8134a6ea0 5648
+src/tbchess.c bca4d1a58de446ed84dbfff18bf7457be097736b 31292
+src/stdendian.h 9f598b5c579154a8a75e6c8c5eec9d4b5495216a 8925
+LICENSE 3aa73758fabef0b744b59b407dc40d77ec7022c7 1125
