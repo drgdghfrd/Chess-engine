@@ -1,6 +1,6 @@
 # ChessZero Android runtime
 
-v1.0.9 ships a minimal Android application shell, JNI bridge and a self-contained arm64-v8a native engine.
+v1.1.0 ships a minimal Android application shell, JNI bridge and a self-contained arm64-v8a native engine.
 It is deliberately small: no AndroidX dependency and no UI work is performed in the native search thread.
 
 ## Layout
@@ -89,3 +89,7 @@ After an APK is built, run:
 
 This verifies the OEX executable asset, arm64 JNI library, ET_DYN/PIE type, and
 per-LOAD-segment alignment suitable for 16 KB page-size devices.
+
+
+### v1.1.0 runtime Threads/Hash
+The native engine treats Hash as a total memory budget across the active Lazy-SMP search contexts. Thread-count changes and Hash changes reconfigure the worker pool while idle. Battery Saver remains a GUI concern: the engine follows the UCI time command supplied by the host.

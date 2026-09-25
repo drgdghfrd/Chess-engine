@@ -12,9 +12,10 @@ class UCI{
     int slowMover_=100;
     std::atomic<bool> searching_{false};
     std::atomic<bool> cancelRequested_{false};
+    std::atomic<bool> suppressSearchResult_{false};
     void position(const std::string&);
     void setoption(const std::string&);
-    void waitSearch(bool requestStop);
+    void waitSearch(bool requestStop, bool suppressBestmove = false);
     void startSearch(const std::string& line);
     void emitSearchResult(const Move& m);
 public:

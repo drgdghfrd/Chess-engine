@@ -86,7 +86,15 @@ TranspositionTable::~TranspositionTable() {
 
 void TranspositionTable::resize(size_t mb) {
     freeTable();
-    size_t bytes = std::max<size_t>(1, mb) * 1024ULL * 1024ULL;
+    if (mb == 0) {
+        // A worker may intentionally run without a private TT when the total
+        // Hash budget is smaller than the requested thread count. Keeping the
+        // worker alive while giving it a zero-sized TT preserves the UCI
+        // thread setting without silently multiplying the requested memory.
+        age_ = 0;
+        return;
+    }
+    size_t bytes = mb * 1024ULL * 1024ULL;
     size_t entries = bytes / sizeof(TTEntry);
     size_t buckets = nextPow2(std::max<size_t>(1, entries / CLUSTER));
     if (buckets > (1u << 24)) buckets = 1u << 24;

@@ -162,6 +162,44 @@ target_compile_options(chesszero_selfplay PRIVATE -O3 -Wall -Wextra -UNDEBUG)
 target_link_libraries(chesszero_selfplay PRIVATE Threads::Threads)
 
 
+add_executable(chesszero_v112_runtime_resource_tests
+    tests/v112_runtime_resource_tests.cpp
+    src/chess/Position.cpp
+    src/chess/Move.cpp
+    src/chess/Zobrist.cpp
+    src/bitboard/Bitboard.cpp
+    src/engine/Evaluation.cpp
+    src/engine/Search.cpp
+    src/engine/TranspositionTable.cpp
+    src/book/OpeningBook.cpp
+    src/book/PolyglotZobrist.cpp
+    src/nnue/NNUE.cpp
+    src/tablebase/Syzygy.cpp
+)
+target_include_directories(chesszero_v112_runtime_resource_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(chesszero_v112_runtime_resource_tests PRIVATE -O2 -Wall -Wextra -UNDEBUG)
+target_link_libraries(chesszero_v112_runtime_resource_tests PRIVATE Threads::Threads)
+add_test(NAME v112_runtime_resource COMMAND chesszero_v112_runtime_resource_tests)
+
+add_executable(chesszero_v113_low_hash_profile_tests
+    tests/v113_low_hash_profile_tests.cpp
+    src/chess/Position.cpp
+    src/chess/Move.cpp
+    src/chess/Zobrist.cpp
+    src/bitboard/Bitboard.cpp
+    src/engine/Evaluation.cpp
+    src/engine/Search.cpp
+    src/engine/TranspositionTable.cpp
+    src/book/OpeningBook.cpp
+    src/book/PolyglotZobrist.cpp
+    src/nnue/NNUE.cpp
+    src/tablebase/Syzygy.cpp
+)
+target_include_directories(chesszero_v113_low_hash_profile_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(chesszero_v113_low_hash_profile_tests PRIVATE -O2 -Wall -Wextra -UNDEBUG)
+target_link_libraries(chesszero_v113_low_hash_profile_tests PRIVATE Threads::Threads)
+add_test(NAME v113_low_hash_profiles COMMAND chesszero_v113_low_hash_profile_tests)
+
 add_executable(chesszero_v108_android_game_api_tests
     tests/v108_android_game_api_tests.cpp
     src/api/EngineAPI.cpp
@@ -181,6 +219,45 @@ target_include_directories(chesszero_v108_android_game_api_tests PRIVATE ${CMAKE
 target_compile_options(chesszero_v108_android_game_api_tests PRIVATE -O2 -Wall -Wextra -UNDEBUG)
 target_link_libraries(chesszero_v108_android_game_api_tests PRIVATE Threads::Threads)
 add_test(NAME v108_android_game_api COMMAND chesszero_v108_android_game_api_tests)
+
+add_executable(chesszero_v115_engine_api_runtime_reconfigure_tests
+    tests/v115_engine_api_runtime_reconfigure_tests.cpp
+    src/api/EngineAPI.cpp
+    src/chess/Position.cpp
+    src/chess/Move.cpp
+    src/chess/Zobrist.cpp
+    src/bitboard/Bitboard.cpp
+    src/engine/Evaluation.cpp
+    src/engine/Search.cpp
+    src/engine/TranspositionTable.cpp
+    src/book/OpeningBook.cpp
+    src/book/PolyglotZobrist.cpp
+    src/nnue/NNUE.cpp
+    src/tablebase/Syzygy.cpp
+)
+target_include_directories(chesszero_v115_engine_api_runtime_reconfigure_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(chesszero_v115_engine_api_runtime_reconfigure_tests PRIVATE -O2 -Wall -Wextra -UNDEBUG)
+target_link_libraries(chesszero_v115_engine_api_runtime_reconfigure_tests PRIVATE Threads::Threads)
+add_test(NAME v115_engine_api_runtime_reconfigure COMMAND chesszero_v115_engine_api_runtime_reconfigure_tests)
+
+add_executable(chesszero_v116_runtime_reconfigure_matrix_tests
+    tests/v116_runtime_reconfigure_matrix_tests.cpp
+    src/chess/Position.cpp
+    src/chess/Move.cpp
+    src/chess/Zobrist.cpp
+    src/bitboard/Bitboard.cpp
+    src/engine/Evaluation.cpp
+    src/engine/Search.cpp
+    src/engine/TranspositionTable.cpp
+    src/book/OpeningBook.cpp
+    src/book/PolyglotZobrist.cpp
+    src/nnue/NNUE.cpp
+    src/tablebase/Syzygy.cpp
+)
+target_include_directories(chesszero_v116_runtime_reconfigure_matrix_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(chesszero_v116_runtime_reconfigure_matrix_tests PRIVATE -O2 -Wall -Wextra -UNDEBUG)
+target_link_libraries(chesszero_v116_runtime_reconfigure_matrix_tests PRIVATE Threads::Threads)
+add_test(NAME v116_runtime_reconfigure_matrix COMMAND chesszero_v116_runtime_reconfigure_matrix_tests)
 
 option(CHESSZERO_BUILD_TESTS "Build ChessZero regression tests" ON)
 

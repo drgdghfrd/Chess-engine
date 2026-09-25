@@ -26,12 +26,19 @@ public:
                  int wincMs, int bincMs, int movesToGo = 0);
     void stop();
     void setExternalStop(std::atomic<bool>* flag) { externalStop_ = flag; }
-    void setThreads(int n) { hot_.threads = std::clamp(n, 1, 64); } // v0.86: Lazy SMP root parallelism
+    void setThreads(int n); // v1.1.0: runtime worker-pool configuration
     int threads() const { return hot_.threads; }
     uint64_t nodes() const { return nodes_.load(); }
     int score() const { return hot_.score; }
     int completedDepth() const { return hot_.completedDepth; }
     void setHashMB(size_t mb);
+    size_t configuredHashMB() const { return configuredHashMB_; }
+    size_t allocatedHashMB() const;
+    size_t totalParallelHashMB() const;
+    // v1.1.0: inspect the actual private-TT layout used by the active contexts.
+    // Entry 0 is the root coordinator; the remaining entries are workers.
+    std::vector<size_t> hashSlicesMB() const;
+    size_t parallelWorkerCount() const { return parallelWorkers_.size(); }
     void clearHash();
     // v0.98: UCI time-management controls. MoveOverhead protects the clock
     // from GUI/OS/network latency; SlowMover scales the allocated thinking time.
@@ -111,6 +118,12 @@ private:
     const TranspositionTable& tt() const { return sharedTT_ ? *sharedTT_ : tt_; }
     std::atomic<bool> stop_{false};
     std::atomic<bool>* externalStop_ = nullptr;
+    // v1.1.0: Hash is a total memory budget for the whole configured search
+    // context, not a multiplier per thread. The root coordinator and workers
+    // receive private TT slices to avoid mutex contention in the search hot path.
+    size_t configuredHashMB_ = 32;
+    int appliedThreads_ = 1;
+    size_t appliedHashMB_ = 32;
 
     // ---- Hot working set (aim L1/L2; keep contiguous) ----
     alignas(64) struct Hot {
@@ -202,6 +215,7 @@ private:
     std::vector<std::unique_ptr<Search>> parallelWorkers_;
 
     bool timeUp();          // hard limit / stop flag
+    void applyParallelHashLayout();
     void prepareParallelWorkers();
     bool softTimeUp() const; // soft limit (checked between ID depths)
     uint64_t hash(const Position&) const;
@@ -218,6 +232,7 @@ private:
     void updateCounterHistory(const Move& prev, const Move& m, int depth, int bonusSign = 1);
     int continuationScore(const Position&, const Move& prev, const Move& m) const;
     void updatePV(int ply, const Move& m);
+    static std::vector<size_t> splitHashBudget(size_t totalMB, size_t contexts);
     // softMs / hardMs: 0 = unlimited
     Move searchInternal(Position&, int depth, int softMs, int hardMs);
 };

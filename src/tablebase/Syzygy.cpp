@@ -247,5 +247,5 @@ bool Syzygy::rootProbe(const Position& p, Move& bestMove, SyzygyProbeResult& res
 }  // namespace uc
 
 #ifdef CHESSZERO_FATHOM
-/* tbprobe.c compiled separately via CMake */
+#include <tbprobe.c>
 #endif

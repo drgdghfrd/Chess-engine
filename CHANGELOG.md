@@ -1,3 +1,21 @@
+## v1.1.0 runtime reconfiguration hardening
+
+- Allow UCI `Threads` and `Hash` changes during an active search with a safe stop/join/apply transaction.
+- Suppress intermediate `bestmove` output caused only by runtime option changes.
+- Make `isready` quiesce active search without emitting an intermediate `bestmove`.
+- Apply the same semantics to EngineAPI `setThreads()` / `setHashMB()`.
+- Preserve total Hash-budget semantics across 16/32/64/128/256 MB profiles.
+
+## v1.1.0 — Runtime Threads/Hash resource architecture
+
+- UCI/EngineAPI thread changes now reconfigure the worker pool before the next search.
+- Hash is treated as a total memory budget across the active search contexts instead of a per-thread multiplier.
+- Each Lazy-SMP search context owns a private TT slice, avoiding shared-TT mutex contention in the search hot path.
+- Hash slices use power-of-two capacities to avoid hidden allocator rounding; upgrades are distributed across contexts to keep the slices balanced while giving the coordinator the first upgrade opportunity.
+- Very small Hash values can leave some workers with a zero-sized TT while preserving the requested thread count.
+- `isready` reports runtime thread count, configured Hash, allocated total Hash, and worker count.
+- Android version bumped to 1.1.0 (versionCode 110).
+
 ## v1.0.9 (multi-layer NNUE) — HalfKAv2-style 512->8->32->1
 - NNUE inference: new CZNNUE64 format with multi-layer forward pass (L1 concat stm-first -> L2=8 clipped -> L3=32 clipped -> scalar). Backward-compatible with CZNNUE32 single-layer; loadMemory auto-detects.
 - Incremental accumulator update unchanged (addFeature/applyMoveFeatures/refresh).

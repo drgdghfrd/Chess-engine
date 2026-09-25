@@ -1,4 +1,4 @@
-# ChessZero v1.0.9 — Android/OEX release with audited NNUE bundle
+# ChessZero v1.1.0 — Android/OEX release with runtime resource control
 
 
 ## v1.0.9 — Self-contained NNUE/OEX runtime
@@ -450,3 +450,9 @@ This tree adds incremental Position bitboards, per-ply quiescence move-buffer re
 ## Batch 2L — Android release hardening
 
 The canonical workspace is organized under `chesszero/`. The pinned Fathom source contract is recorded in `third_party/Fathom/SOURCE.lock`; use `tools/vendor_fathom.sh` to populate the exact commit before an offline release build. Android OEX/APK validation is available under `tools/android/`.
+
+## v1.1.0 runtime resource model
+
+`Threads` is the number of active search workers. `Hash` is the total transposition-table memory budget for the whole search context, not `Hash × Threads`. Lazy-SMP contexts use private TT slices so they do not contend on a shared mutex in the search hot path; the slices are rebalanced when Threads or Hash changes. Changing Threads or Hash while the engine is idle reconfigures the worker pool/TT layout before the next search.
+
+Battery-saving is controlled by the host GUI. ChessZero does not attempt to override a GUI time limit; it obeys the `go` command and its time budget.

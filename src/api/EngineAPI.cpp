@@ -146,9 +146,14 @@ bool Engine::nnueLoaded() const noexcept {
     return uc::network().loaded();
 }
 bool Engine::setThreads(int threads) {
+    // Runtime resource changes are safe only after the active search and all
+    // of its worker threads have quiesced. Stop-and-wait makes Android API
+    // callers behave the same way as the UCI path: the new setting applies to
+    // the next search instead of being rejected as "busy".
     if (impl_->searching.load(std::memory_order_acquire)) {
-        impl_->setError("engine busy");
-        return false;
+        impl_->externalStop.store(true, std::memory_order_release);
+        impl_->search.stop();
+        waitIdle();
     }
     impl_->search.setThreads(std::clamp(threads, 1, 64));
     impl_->setError("");
@@ -156,8 +161,9 @@ bool Engine::setThreads(int threads) {
 }
 bool Engine::setHashMB(std::size_t mb) {
     if (impl_->searching.load(std::memory_order_acquire)) {
-        impl_->setError("engine busy");
-        return false;
+        impl_->externalStop.store(true, std::memory_order_release);
+        impl_->search.stop();
+        waitIdle();
     }
     impl_->search.setHashMB(std::clamp<std::size_t>(mb, 1, 2048));
     impl_->setError("");

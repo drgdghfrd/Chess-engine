@@ -21,41 +21,154 @@ static int tbScore(SyzygyWDL wdl) { switch(wdl){ case SyzygyWDL::Win:return TB_W
 #endif
 
 
-Search::Search(size_t ttMB):tt_(ttMB){}
+Search::Search(size_t ttMB):tt_(ttMB), configuredHashMB_(ttMB), appliedThreads_(1), appliedHashMB_(ttMB){}
 
-Search::Search(size_t ttMB, TranspositionTable* sharedTT):tt_(ttMB), sharedTT_(sharedTT){
+Search::Search(size_t ttMB, TranspositionTable* sharedTT):tt_(ttMB), sharedTT_(sharedTT), configuredHashMB_(ttMB), appliedThreads_(1), appliedHashMB_(ttMB){
     if (sharedTT_) sharedTT_->setThreadSafe(true);
 }
 
-void Search::prepareParallelWorkers(){
-    if (hot_.threads <= 1){
-        parallelWorkers_.clear();
+std::vector<size_t> Search::splitHashBudget(size_t totalMB, size_t contexts) {
+    if (contexts == 0) return {};
+    totalMB = std::max<size_t>(1, totalMB);
+
+    // TT buckets are powers of two, so each slice is chosen from powers of two
+    // to avoid hidden 1.5x–2x allocator rounding. The first slot is the root
+    // coordinator; any leftover whole power-of-two increment is given there.
+    std::vector<size_t> shares(contexts, 0);
+    if (totalMB < contexts) {
+        for (size_t i = 0; i < totalMB && i < contexts; ++i) shares[i] = 1;
+        return shares;
+    }
+
+    size_t base = 1;
+    const size_t target = totalMB / contexts;
+    while (base <= target / 2) base *= 2;
+    std::fill(shares.begin(), shares.end(), base);
+    size_t used = base * contexts;
+    size_t remaining = totalMB - used;
+
+    // Distribute every affordable power-of-two upgrade across contexts in
+    // order. This keeps slices balanced while giving the coordinator the first
+    // opportunity to receive a larger slice. Example: 128 MB / 5 contexts
+    // becomes 32,32,32,16,16 rather than concentrating 64 MB in one worker.
+    for (;;) {
+        bool upgraded = false;
+        for (size_t i = 0; i < shares.size(); ++i) {
+            const size_t cost = shares[i];
+            if (cost == 0 || cost > remaining) continue;
+            shares[i] *= 2;
+            remaining -= cost;
+            upgraded = true;
+        }
+        if (!upgraded) break;
+    }
+    return shares;
+}
+
+void Search::applyParallelHashLayout(){
+    const int requestedThreads = std::clamp(hot_.threads, 1, 64);
+    if (sharedTT_) {
+        if (appliedThreads_ == requestedThreads && appliedHashMB_ == configuredHashMB_) return;
+        tt().resize(std::max<size_t>(1, configuredHashMB_));
+        appliedThreads_ = requestedThreads;
+        appliedHashMB_ = configuredHashMB_;
         return;
     }
 
-    const size_t workerCount = static_cast<size_t>(std::max(0, hot_.threads - 1));
-    while (parallelWorkers_.size() < workerCount){
-        // Small private TT per worker: enough to capture local transpositions
-        // without multiplying the main Hash setting and exhausting mobile RAM.
-        auto worker = std::make_unique<Search>(2);
-        worker->setThreads(1);
+    if (appliedThreads_ == requestedThreads && appliedHashMB_ == configuredHashMB_) return;
+
+    const size_t contexts = static_cast<size_t>(requestedThreads);
+    const auto shares = splitHashBudget(configuredHashMB_, contexts);
+
+    if (contexts <= 1) {
+        parallelWorkers_.clear();
+        tt_.resize(shares.empty() ? configuredHashMB_ : shares[0]);
+        appliedThreads_ = requestedThreads;
+        appliedHashMB_ = configuredHashMB_;
+        return;
+    }
+
+    const size_t workerCount = contexts - 1;
+    while (parallelWorkers_.size() < workerCount) {
+        const size_t index = parallelWorkers_.size() + 1;
+        auto worker = std::make_unique<Search>(index < shares.size() ? shares[index] : 0);
+        worker->hot_.threads = 1;
         parallelWorkers_.push_back(std::move(worker));
     }
     while (parallelWorkers_.size() > workerCount)
         parallelWorkers_.pop_back();
 
+    tt_.resize(shares.empty() ? 0 : shares[0]);
+    for (size_t i = 0; i < parallelWorkers_.size(); ++i) {
+        auto& worker = parallelWorkers_[i];
+        const size_t slice = (i + 1 < shares.size()) ? shares[i + 1] : 0;
+        worker->configuredHashMB_ = slice;
+        worker->appliedThreads_ = 1;
+        worker->appliedHashMB_ = slice;
+        worker->tt_.resize(slice);
+    }
+    appliedThreads_ = requestedThreads;
+    appliedHashMB_ = configuredHashMB_;
+}
+
+void Search::setThreads(int n){
+    hot_.threads = std::clamp(n, 1, 64);
+    // UCI and EngineAPI serialize configuration changes outside active search.
+    // Apply immediately so switching 7→5 threads really changes the worker pool
+    // before the next go/isready cycle.
+    applyParallelHashLayout();
+}
+
+void Search::setHashMB(size_t mb){
+    configuredHashMB_ = std::max<size_t>(1, mb);
+    applyParallelHashLayout();
+}
+
+size_t Search::allocatedHashMB() const {
+    const size_t bytes = tt().size() * sizeof(TTEntry);
+    return bytes / (1024ULL * 1024ULL);
+}
+
+size_t Search::totalParallelHashMB() const {
+    size_t total = allocatedHashMB();
+    for (const auto& worker : parallelWorkers_) total += worker->allocatedHashMB();
+    return total;
+}
+
+std::vector<size_t> Search::hashSlicesMB() const {
+    std::vector<size_t> slices;
+    slices.reserve(parallelWorkers_.size() + 1);
+    slices.push_back(allocatedHashMB());
+    for (const auto& worker : parallelWorkers_)
+        slices.push_back(worker->allocatedHashMB());
+    return slices;
+}
+
+void Search::clearHash(){
+    tt().clear();
+    for (auto& worker : parallelWorkers_) worker->tt().clear();
+}
+
+void Search::prepareParallelWorkers(){
+    if (hot_.threads <= 1){
+        return;
+    }
+
+    // The worker layout is applied by setThreads()/setHashMB(). Re-applying here
+    // is cheap when the configuration is already current and also protects direct
+    // Search users that modify hot_ state before a search begins.
+    applyParallelHashLayout();
+
     for (auto& worker : parallelWorkers_){
         worker->stop_.store(false, std::memory_order_relaxed);
         worker->externalStop_ = &stop_;
         worker->hot_ = Hot{};
+        worker->hot_.threads = 1;
         worker->syzygy_ = syzygy_;
         worker->nodes_.store(0, std::memory_order_relaxed);
         worker->tt().clear();
     }
 }
-
-void Search::setHashMB(size_t mb){ tt().resize(std::max<size_t>(1,mb)); }
-void Search::clearHash(){ tt().clear(); }
 
 void Search::stop(){stop_=true;}
 

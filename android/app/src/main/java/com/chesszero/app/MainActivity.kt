@@ -44,7 +44,7 @@ class MainActivity : Activity() {
             setOnMoveListener { uci -> playHumanMove(uci) }
         }
         status = TextView(this).apply {
-            text = if (netOk) "ChessZero 1.0.9 • NNUE embedded • White: you • Black: engine" else "ChessZero 1.0.9 • NNUE load failed"
+            text = if (netOk) "ChessZero 1.1.0 • NNUE embedded • White: you • Black: engine" else "ChessZero 1.1.0 • NNUE load failed"
             textSize = 18f
             setPadding(0, 12, 0, 12)
         }

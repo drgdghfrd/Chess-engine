@@ -107,6 +107,13 @@ void UCI::position(const std::string&line){
 }
 
 void UCI::setoption(const std::string&line){
+    // UCI GUIs may change engine options while a search is active.
+    // Reconfiguration is transactional: stop the current search, wait for all
+    // worker threads to leave the search, then apply the new option. We suppress
+    // the cancelled search's bestmove because this was not a user-requested
+    // stop and the GUI is about to continue with the new runtime configuration.
+    waitSearch(true, true);
+
     std::istringstream ss(line);
     std::string tok,name;
     ss>>tok>>tok;
@@ -118,10 +125,22 @@ void UCI::setoption(const std::string&line){
 
     if(name=="Threads"){
         int n=1;
-        if(ss>>n)s_.setThreads(std::clamp(n,1,64));
+        if(ss>>n){
+            s_.setThreads(std::clamp(n,1,64));
+            std::cout<<"info string runtime_reconfigured threads="<<s_.threads()
+                     <<" hash_mb="<<s_.configuredHashMB()
+                     <<" allocated_hash_mb="<<s_.totalParallelHashMB()
+                     <<" parallel_workers="<<s_.parallelWorkerCount()<<"\n";
+        }
     }else if(name=="Hash"){
         int n=32;
-        if(ss>>n)s_.setHashMB(static_cast<size_t>(std::clamp(n,1,2048)));
+        if(ss>>n){
+            s_.setHashMB(static_cast<size_t>(std::clamp(n,1,2048)));
+            std::cout<<"info string runtime_reconfigured threads="<<s_.threads()
+                     <<" hash_mb="<<s_.configuredHashMB()
+                     <<" allocated_hash_mb="<<s_.totalParallelHashMB()
+                     <<" parallel_workers="<<s_.parallelWorkerCount()<<"\n";
+        }
     }else if(name=="Move Overhead"){
         int n=30;
         if(ss>>n){ moveOverheadMs_=std::clamp(n,0,1000); s_.setMoveOverheadMs(moveOverheadMs_); }
@@ -234,13 +253,15 @@ UCI::~UCI(){
     waitSearch(true);
 }
 
-void UCI::waitSearch(bool requestStop){
+void UCI::waitSearch(bool requestStop, bool suppressBestmove){
     if (requestStop) {
+        suppressSearchResult_.store(suppressBestmove, std::memory_order_release);
         cancelRequested_.store(true, std::memory_order_release);
         s_.stop();
     }
     if (searchThread_.joinable())
         searchThread_.join();
+    suppressSearchResult_.store(false, std::memory_order_release);
 }
 
 void UCI::emitSearchResult(const Move& m){
@@ -309,15 +330,17 @@ void UCI::startSearch(const std::string& line){
         if (cancelRequested_.load(std::memory_order_acquire)) {
             auto legal = searchPos.legal();
             if (!legal.empty()) m = legal.front();
+            if (!suppressSearchResult_.load(std::memory_order_acquire))
+                emitSearchResult(m);
             searching_.store(false, std::memory_order_release);
-            emitSearchResult(m);
             return;
         }
         if(ms) m=s_.go(searchPos,d,ms);
         else if(clockSpecified) m=s_.goTimed(searchPos,d,wtime,btime,winc,binc,mtg);
         else m=s_.go(searchPos,infinite ? 64 : d);
+        if (!suppressSearchResult_.load(std::memory_order_acquire))
+            emitSearchResult(m);
         searching_.store(false, std::memory_order_release);
-        emitSearchResult(m);
     });
 }
 
@@ -363,11 +386,14 @@ void UCI::loop(){
             std::cout << "info string eval full(evaluate) stm_cp="
                       << evaluate(p_) << std::endl;
         }else if(l=="isready"){
-            waitSearch(true);
+            waitSearch(true, true);
             std::cout<<"info string evalmode="<<(evalMode()==EvalMode::NNUE?"nnue":"classical")<<" nnue="<<(network().loaded()?"loaded":"fallback")<<" arch="<<network().architectureName()<<" simd="<<nnueSimdPath()<<"\n";
+            std::cout<<"info string runtime_threads="<<s_.threads()
+                     <<" runtime_hash_mb="<<s_.configuredHashMB()
+                     <<" allocated_hash_mb="<<s_.totalParallelHashMB()
+                     <<" parallel_workers="<<s_.parallelWorkerCount()<<"\n";
             std::cout<<"readyok\n";
         }else if(l.rfind("setoption",0)==0){
-            waitSearch(true);
             setoption(l);
         }else if(l.rfind("position",0)==0){
             waitSearch(true);
